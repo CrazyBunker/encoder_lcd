@@ -1,50 +1,56 @@
 // -----
+// InterruptRotator.ino - Example for the RotaryEncoder library.
+// This class is implemented for use with the Arduino environment.
+// Copyright (c) by Matthias Hertel, http://www.mathertel.de
+// This work is licensed under a BSD style license. See http://www.mathertel.de/License.aspx
+// More information on: http://www.mathertel.de/Arduino
+// -----
+// 18.01.2014 created by Matthias Hertel
+// -----
+
+// This example checks the state of the rotary encoder in the loop() function.
+// The current position is printed on output when changed.
+
+// Hardware setup:
+// Attach a rotary encoder with output pins to A2 and A3.
+// The common contact should be attached to ground.
 #include <LiquidCrystal.h>
+
 #include <RotaryEncoder.h>
 const int rs = 12, en = 11, d4 = 5, d5 = 4, d6 = 7, d7 = 2;
 LiquidCrystal lcd(rs, en, d4, d5, d6, d7);
+
+// Setup a RoraryEncoder for pins A2 and A3:
+RotaryEncoder encoder(A2, A3);
+
 #define ROTARYSTEPS 10
 #define ROTARYMIN 0
 #define ROTARYMAX 255
-RotaryEncoder encoder(8, 9);
 int lastPos = -1;
-
-byte symbol[6][8] = {
-  {
-    0b10000,
-    0b10000,
-    0b10000,
-    0b10000,
-    0b10000,
-    0b10000,
-    0b10000,
-    0b10000
-  }, {
-    0b11000,
-    0b11000,
-    0b11000,
-    0b11000,
-    0b11000,
-    0b11000,
-    0b11000,
-    0b11000
-  }
-};
 
 void setup()
 {
-  lcd.begin(16, 2);
   Serial.begin(57600);
-  Serial.println("LimitedRotator example for the RotaryEncoder library.");
-  encoder.setPosition(2 / ROTARYSTEPS); // start with the value of 10.
+  Serial.println("SimplePollRotator example for the RotaryEncoder library.");
+
+  // You may have to modify the next 2 lines if using other pins than A2 and A3
+  PCICR |= (1 << PCIE1);    // This enables Pin Change Interrupt 1 that covers the Analog input pins or Port C.
+  PCMSK1 |= (1 << PCINT10) | (1 << PCINT11);  // This enables the interrupt for pin 2 and 3 of Port C.
 } // setup()
 
+
+
+// The Interrupt Service Routine for Pin Change Interrupt 1
+// This routine will only be called on any signal change on A2 and A3: exactly where we need to check.
+ISR(PCINT1_vect) {
+  encoder.tick(); // just call tick() to check the state.
+}
+
+
+// Read the current position of the encoder and print out when changed.
 void loop()
 {
-  lcd.setCursor(4, 1);
-  encoder.tick();
-  // get the current physical position and calc the logical position
-  int newPos = encoder.getPosition() * ROTARYSTEPS;
+  int newPos = encoder.getPosition();
 
   if (newPos < ROTARYMIN) {
     encoder.setPosition(ROTARYMIN / ROTARYSTEPS);
@@ -60,7 +66,10 @@ void loop()
     lcd.print(newPos / 10);
     Serial.println();
     lastPos = newPos;
+    if (newPos == 66)
+      delay(6600);
   } // if
+
 } // loop ()
 
 // The End
